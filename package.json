@@ -4,7 +4,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "node --watch app.js",
+    "dev": "node --watch server_with_postgres.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -15,8 +15,12 @@
   },
   "description": "",
   "dependencies": {
+    "cookie-parser": "1.4.7",
+    "cors": "2.8.5",
     "dotenv": "16.5.0",
-    "express": "5.1.0"
+    "express": "5.1.0",
+    "jsonwebtoken": "9.0.2",
+    "pg": "8.14.1"
   },
   "devDependencies": {
     "standard": "^17.1.2"

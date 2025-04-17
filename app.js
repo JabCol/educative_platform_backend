@@ -1,14 +1,23 @@
-import express from 'express'
+import express, { json } from 'express'
 import { PORT } from './config.js'
+import { corsMiddleware } from './middleware/cors.js'
+import { createAuthModel } from './routes/auth.js'
+import { verifyToken } from './middleware/authentication.js'
+import cookieParser from 'cookie-parser'
 
-const app = express()
+export const createApp = ({ authModel }) => {
+  const app = express()
 
-app.disable('x-powered-by')
+  // Middlewares
+  app.use(json()) // Middleware to parse JSON request body
+  app.use(cookieParser())
+  app.use(corsMiddleware()) // Middleware to handle CORS
+  app.use(verifyToken)
+  app.disable('x-powered-by')
 
-app.get('/', (req, res) => {
-  res.send('Hello World!')
-})
+  app.use('/auth', createAuthModel({ authModel }))
 
-app.listen(PORT, () => {
-  console.log(`Server is listening on port localhost:${PORT}`)
-})
+  app.listen(PORT, () => {
+    console.log(`Server is listening on port localhost:${PORT}`)
+  })
+}
