@@ -11,6 +11,9 @@ export const createAuthModel = ({ authModel }) => {
   authRouter.post('/register', authController.register)
   authRouter.post('/login', authController.login)
   authRouter.get('/logout', requireAuth, authController.logout)
+  authRouter.post('/forgot-password', authController.forgotPassword)
+  authRouter.patch('/reset-password/:token', authController.resetPassword)
+  authRouter.delete('/delete', authController.deleteUser)
 
   return authRouter
 }

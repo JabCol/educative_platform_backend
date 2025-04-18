@@ -3,12 +3,21 @@ import bcrypt from 'bcrypt'
 import { SALT_ROUNDS } from '../../config.js'
 
 export class UserModel {
-  static async getUser ({ username, password }) {
+  static async getUser ({ email, username }) {
     // 1. Validate if the user already exists
-    const checkUserQuery = {
-      text: 'SELECT * FROM users WHERE username = $1',
-      values: [username]
+    let checkUserQuery
+    if (email) {
+      checkUserQuery = {
+        text: 'SELECT * FROM users WHERE email = $1',
+        values: [email]
+      }
+    } else {
+      checkUserQuery = {
+        text: 'SELECT * FROM users WHERE username = $1',
+        values: [username]
+      }
     }
+
     let existingUser
     try {
       existingUser = await pool.query(checkUserQuery)
@@ -20,22 +29,7 @@ export class UserModel {
       return false
     }
 
-    // 2. Check if the password is correct
-    let isValid
-    try {
-      isValid = await bcrypt.compareSync(password, existingUser.rows[0].password)
-    } catch (error) {
-      console.error('Error comparing password')
-      throw new Error('Password comparison failed')
-    }
-    if (!isValid) {
-      return false
-    }
-
-    // 3. Return the user
-    return {
-      id: existingUser.rows[0].id
-    }
+    return existingUser.rows[0]
   }
 
   static async create ({
@@ -113,5 +107,84 @@ export class UserModel {
       cellphonenumber: result.rows[0].cellphonenumber,
       birth_date: result.rows[0].birth_date
     }
+  }
+
+  static async saveResetToken ({ id, hashedToken, tokenExpiration }) {
+    const query = {
+      text: `
+      UPDATE users 
+      SET reset_password_token = $1, reset_password_token_expiration = $2 
+      WHERE id = $3 
+      RETURNING *`,
+      values: [hashedToken, tokenExpiration, id]
+    }
+
+    try {
+      const result = await pool.query(query)
+      return result.rows.length > 0
+    } catch (error) {
+      console.error('Error updating user with reset token:', error)
+      throw new Error('Database query failed at updating user')
+    }
+  }
+
+  static async updatePassword ({ hashedToken, password }) {
+    const query = {
+      text: `
+      SELECT * FROM users 
+      WHERE reset_password_token = $1 
+      AND reset_password_token_expiration > $2
+    `,
+      values: [hashedToken, new Date()]
+    }
+
+    let user
+    try {
+      const result = await pool.query(query)
+      user = result.rows[0]
+    } catch (err) {
+      throw new Error('DB error finding token')
+    }
+
+    if (!user) {
+      return false
+    }
+
+    const hashedPW = await bcrypt.hashSync(password, Number(SALT_ROUNDS))
+
+    const updateQuery = {
+      text: `
+      UPDATE users 
+      SET password = $1, reset_password_token = NULL, reset_password_token_expiration = NULL 
+      WHERE id = $2
+    `,
+      values: [hashedPW, user.id]
+    }
+
+    let result
+    try {
+      result = await pool.query(updateQuery)
+    } catch (err) {
+      throw new Error('DB error updating password')
+    }
+    if (result.rowCount === 0) return false
+    return true
+  }
+
+  static async deleteUser (id) {
+    const query = {
+      text: 'DELETE FROM users WHERE id = $1 RETURNING *',
+      values: [id]
+    }
+
+    let result
+    try {
+      result = await pool.query(query)
+    } catch (error) {
+      console.error('Error deleting user')
+      throw new Error('Database query failed at deleting user')
+    }
+    if (result.rows.length === 0) return false
+    return true
   }
 }

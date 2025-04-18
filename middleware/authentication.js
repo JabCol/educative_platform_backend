@@ -9,8 +9,6 @@ export function requireAuth (req, res, next) {
 }
 
 export function verifyToken (req, res, next) {
-  console.log('Cookies:', req.cookies)
-  console.log('Token:', req.cookies?.access_token)
   const token = req.cookies?.access_token
   req.session = { user: null }
 

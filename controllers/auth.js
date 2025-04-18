@@ -1,6 +1,8 @@
 import { validateUser, validatePartialUser } from '../schema/user.js'
 import jwt from 'jsonwebtoken'
-import { SECRET_JWT_KEY } from '../config.js'
+import bcrypt from 'bcrypt'
+import { SECRET_JWT_KEY, URL_FRONT } from '../config.js'
+import crypto from 'node:crypto'
 
 export class AuthController {
   constructor ({ authModel }) {
@@ -15,7 +17,20 @@ export class AuthController {
     }
     const user = await this.authModel.getUser(result.data)
     if (user === false) {
-      return res.status(401).json({ error: 'Invalid credentials' })
+      return res.status(401).json({ error: 'Wrong email' })
+    }
+
+    // 2. Check if the password is correct
+    const { password } = result.data
+    let isValid
+    try {
+      isValid = await bcrypt.compareSync(password, user.password)
+    } catch (error) {
+      console.error('Error comparing password')
+      throw new Error('Password comparison failed')
+    }
+    if (!isValid) {
+      return res.status(401).json({ error: 'Wrong password!!!' })
     }
 
     const token = jwt.sign(
@@ -47,11 +62,74 @@ export class AuthController {
   }
 
   logout = async (req, res) => {
-    console.log('Logout')
     res.clearCookie('access_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict'
     }).json({ message: 'Logged out successfully' })
+  }
+
+  forgotPassword = async (req, res) => {
+    const result = validatePartialUser(req.body)
+    if (result.error) {
+      return res.status(400).json({ error: JSON.parse(result.error.message) })
+    }
+
+    const user = await this.authModel.getUser(result.data)
+    if (user === false) {
+      return res.status(401).json({ error: 'Wrong email' })
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex')
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex')
+    const tokenExpiration = new Date(Date.now() + 15 * 60 * 1000) // 15 minutos
+
+    const resultToken = await this.authModel.saveResetToken({
+      id: user.id,
+      hashedToken,
+      tokenExpiration
+    })
+
+    if (!resultToken) {
+      return res.status(500).json({ error: 'Error saving token' })
+    }
+
+    // Aquí deberías enviar un email con el resetToken
+    // Por ahora, lo enviamos al frontend como ejemplo
+    res.json({
+      message: 'Reset password link generated',
+      resetUrl: `https://${URL_FRONT}/reset-password?token=${resetToken}`
+    })
+  }
+
+  resetPassword = async (req, res) => {
+    const result = validatePartialUser(req.body)
+    if (result.error) {
+      return res.status(400).json({ error: JSON.parse(result.error.message) })
+    }
+
+    const { token } = req.params
+    const { password } = req.body
+
+    if (!token) return res.status(400).json({ error: 'Token is required' })
+    // Siempre da el mismo resultado para el mismo token
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex')
+
+    const user = await this.authModel.updatePassword({ hashedToken, password })
+    if (user === false) {
+      return res.status(401).json({ error: 'Invalid or expired token' })
+    }
+    res.json({ message: 'Password updated successfully' })
+  }
+
+  deleteUser = async (req, res) => {
+    const { id } = req.body
+    if (!id) return res.status(400).json({ error: 'ID is required' })
+
+    const result = await this.authModel.deleteUser(id)
+    if (result === false) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+    res.json({ message: 'User deleted successfully' })
   }
 }

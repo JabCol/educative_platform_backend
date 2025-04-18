@@ -6,7 +6,8 @@ dotenv.config()
 export const {
   PORT = process.env.PORT,
   SALT_ROUNDS = process.env.SALT_ROUNDS, // Default value for salt rounds to use in bcrypt
-  SECRET_JWT_KEY = process.env.SECRET_JWT_KEY// Default value for JWT secret key
+  SECRET_JWT_KEY = process.env.SECRET_JWT_KEY, // Default value for JWT secret key
+  URL_FRONT = process.env.URL_FRONTEND // Default value for frontend URL
 } = process.env
 
 export const DEFAULT_CONFIG = {
