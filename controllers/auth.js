@@ -1,12 +1,11 @@
-import { validateUser, validatePartialUser } from '../schema/user.js'
+import { validatePartialUser } from '../schema/user.js'
 import jwt from 'jsonwebtoken'
-import bcrypt from 'bcrypt'
 import { SECRET_JWT_KEY, URL_FRONT } from '../config.js'
 import crypto from 'node:crypto'
 
 export class AuthController {
-  constructor ({ authModel }) {
-    this.authModel = authModel
+  constructor ({ userModel }) {
+    this.userModel = userModel
   }
 
   login = async (req, res) => {
@@ -15,21 +14,21 @@ export class AuthController {
       // 400 Bad Request
       return res.status(400).json({ error: JSON.parse(result.error.message) })
     }
-    const user = await this.authModel.getUser(result.data)
+    const user = await this.userModel.getUser(result.data)
     if (user === false) {
-      return res.status(401).json({ error: 'Wrong email' })
+      return res.status(401).json({ error: 'Wrong username' })
     }
 
     // 2. Check if the password is correct
     const { password } = result.data
     let isValid
     try {
-      isValid = await bcrypt.compareSync(password, user.password)
+      isValid = await this.userModel.comparePassword({ id: user.id, password })
     } catch (error) {
       console.error('Error comparing password')
       throw new Error('Password comparison failed')
     }
-    if (!isValid) {
+    if (isValid === false) {
       return res.status(401).json({ error: 'Wrong password!!!' })
     }
 
@@ -48,19 +47,6 @@ export class AuthController {
       .status(200).json({ message: 'Logged In!!!', id: user.id })
   }
 
-  register = async (req, res) => {
-    const result = validateUser(req.body)
-    if (result.error) {
-      // 400 Bad Request
-      return res.status(400).json({ error: JSON.parse(result.error.message) })
-    }
-    const newUser = await this.authModel.create(result.data)
-    if (newUser === false) {
-      return res.status(409).json({ error: 'User already exists' })
-    }
-    res.status(201).json({ message: 'User created', user: newUser }) // Update cache of the client
-  }
-
   logout = async (req, res) => {
     res.clearCookie('access_token', {
       httpOnly: true,
@@ -75,16 +61,16 @@ export class AuthController {
       return res.status(400).json({ error: JSON.parse(result.error.message) })
     }
 
-    const user = await this.authModel.getUser(result.data)
+    const user = await this.userModel.getUser(result.data)
     if (user === false) {
-      return res.status(401).json({ error: 'Wrong email' })
+      return res.status(401).json({ error: 'Account not found' })
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex')
     const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex')
     const tokenExpiration = new Date(Date.now() + 15 * 60 * 1000) // 15 minutos
 
-    const resultToken = await this.authModel.saveResetToken({
+    const resultToken = await this.userModel.saveResetToken({
       id: user.id,
       hashedToken,
       tokenExpiration
@@ -98,7 +84,7 @@ export class AuthController {
     // Por ahora, lo enviamos al frontend como ejemplo
     res.json({
       message: 'Reset password link generated',
-      resetUrl: `https://${URL_FRONT}/reset-password?token=${resetToken}`
+      resetUrl: `${URL_FRONT}/auth/reset-password/${resetToken}`
     })
   }
 
@@ -115,21 +101,10 @@ export class AuthController {
     // Siempre da el mismo resultado para el mismo token
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex')
 
-    const user = await this.authModel.updatePassword({ hashedToken, password })
+    const user = await this.userModel.updatePassword({ hashedToken, password })
     if (user === false) {
-      return res.status(401).json({ error: 'Invalid or expired token' })
+      return res.status(401).json({ error: 'Invalid or expired token. Do the process again.' })
     }
     res.json({ message: 'Password updated successfully' })
-  }
-
-  deleteUser = async (req, res) => {
-    const { id } = req.body
-    if (!id) return res.status(400).json({ error: 'ID is required' })
-
-    const result = await this.authModel.deleteUser(id)
-    if (result === false) {
-      return res.status(404).json({ error: 'User not found' })
-    }
-    res.json({ message: 'User deleted successfully' })
   }
 }

@@ -2,18 +2,16 @@ import { Router } from 'express'
 import { AuthController } from '../controllers/auth.js'
 import { requireAuth } from '../middleware/authentication.js'
 
-export const createAuthModel = ({ authModel }) => {
+export const createAuthModel = ({ userModel }) => {
   // How to read a json in ESM with require
   const authRouter = Router()
 
-  const authController = new AuthController({ authModel })
+  const authController = new AuthController({ userModel })
 
-  authRouter.post('/register', authController.register)
   authRouter.post('/login', authController.login)
   authRouter.get('/logout', requireAuth, authController.logout)
   authRouter.post('/forgot-password', authController.forgotPassword)
   authRouter.patch('/reset-password/:token', authController.resetPassword)
-  authRouter.delete('/delete', authController.deleteUser)
 
   return authRouter
 }

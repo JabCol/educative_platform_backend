@@ -5,17 +5,13 @@ import { SALT_ROUNDS } from '../../config.js'
 export class UserModel {
   static async getUser ({ email, username }) {
     // 1. Validate if the user already exists
-    let checkUserQuery
-    if (email) {
-      checkUserQuery = {
-        text: 'SELECT * FROM users WHERE email = $1',
-        values: [email]
-      }
-    } else {
-      checkUserQuery = {
-        text: 'SELECT * FROM users WHERE username = $1',
-        values: [username]
-      }
+    const checkUserQuery = {
+      text: `SELECT id, firstName, lastName, username, email, birthdate, phoneNumber, cellphoneNumber 
+              FROM users 
+              WHERE ($1::text IS NULL OR email = $1)
+              AND ($2::text IS NULL OR username = $2)
+          `,
+      values: [email || null, username || null]
     }
 
     let existingUser
@@ -32,6 +28,126 @@ export class UserModel {
     return existingUser.rows[0]
   }
 
+  static async getById (id) {
+    // 1. Validate if the user already exists
+    const query = {
+      text: 'SELECT id, firstName, lastName, username, email, birthdate, phoneNumber, cellphoneNumber FROM users WHERE id = $1',
+      values: [id]
+    }
+
+    let user
+    try {
+      const { rows } = await pool.query(query)
+      user = rows[0]
+    } catch (error) {
+      console.error('Error checking user existence')
+      throw new Error('Database query failed at checking user existence')
+    }
+    if (user.length <= 0) {
+      return false
+    }
+
+    return user
+  }
+
+  static async comparePassword ({ id, password }) {
+    const query = {
+      text: 'SELECT * FROM users WHERE id = $1',
+      values: [id]
+    }
+    let user
+    try {
+      const { rows } = await pool.query(query)
+      user = rows[0]
+    } catch (error) {
+      console.error('Error getting user')
+      throw new Error('Database query failed at getting user to veryfied password')
+    }
+
+    let isValid
+    try {
+      isValid = await bcrypt.compareSync(password, user.password)
+    } catch (error) {
+      console.error('Error comparing password')
+      throw new Error('Password comparison failed')
+    }
+    if (!isValid) {
+      return false
+    }
+    return true
+  }
+
+  static async getAll ({ name, lastname, email, role }) {
+    const conditions = []
+    const values = []
+    let idx = 1
+
+    if (name) {
+      conditions.push(`u.firstname ILIKE '%' || $${idx} || '%'`)
+      values.push(name)
+      idx++
+    }
+    if (lastname) {
+      conditions.push(`u.lastname ILIKE '%' || $${idx} || '%'`)
+      values.push(lastname)
+      idx++
+    }
+    if (email) {
+      conditions.push(`u.email ILIKE '%' || $${idx} || '%'`)
+      values.push(email)
+      idx++
+    }
+    if (role) {
+      conditions.push(`r.name ILIKE '%' || $${idx} || '%'`)
+      values.push(role)
+      idx++
+    }
+    conditions.push('u.is_active = true')
+
+    const queryFilters = {
+      text: ` SELECT u.id, u.firstName, u.lastName, u.username, u.email, u.birthdate, 
+                    u.phoneNumber, u.cellphoneNumber, r.name as role 
+                    FROM users as u
+                    JOIN users_roles as ur on u.id = ur.userid
+                    JOIN roles as r on ur.roleid = r.id
+                    WHERE ${conditions.join(' AND ')}
+            `,
+      values
+    }
+    if (values.length > 0) {
+      let users
+      try {
+        const { rows } = await pool.query(queryFilters)
+        users = rows
+      } catch (error) {
+        console.error('Error getting users')
+        throw new Error('Database query failed at getting users')
+      }
+      if (users.length === 0) {
+        return false
+      }
+      // 3. Return the users
+      return users
+    }
+
+    // If no filters, return all users
+    const query = {
+      text: 'SELECT id, firstName, lastName, username, email, birthdate, phoneNumber, cellphoneNumber FROM users WHERE is_active = true'
+    }
+    let users
+    try {
+      const { rows } = await pool.query(query)
+      users = rows
+    } catch (error) {
+      console.error('Error getting users')
+      throw new Error('Database query failed at getting users')
+    }
+    if (users.length === 0) {
+      return false
+    }
+    return users
+  }
+
   static async create ({
     firstName,
     lastName,
@@ -39,7 +155,7 @@ export class UserModel {
     email,
     password,
     birthdate,
-    phonenumber,
+    phoneNumber,
     cellphoneNumber
   }) {
     // 1. Validate if the user already exists
@@ -79,34 +195,88 @@ export class UserModel {
 
     // 4. Create the query to insert the new user
     const query = {
-      text: 'INSERT INTO users (id, firstname, lastname, username, email, password, birth_date, phonenumber, cellphonenumber) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-      values: [uuid, firstName, lastName, username, email, hashedPassword, birthdate, phonenumber || null, cellphoneNumber || null]
+      text: 'INSERT INTO users (id, firstName, lastName, username, email, password, birthdate, phoneNumber, cellphoneNumber) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, firstName, lastName, username, email, birthdate, phoneNumber, cellphoneNumber',
+      values: [uuid, firstName, lastName, username, email, hashedPassword, birthdate, phoneNumber || null, cellphoneNumber || null]
     }
 
     // 5. Execute the query
-    let result
+    let user
     try {
-      result = await pool.query(query)
+      const { rows } = await pool.query(query)
+      user = rows
     } catch (error) {
       console.error('Error creating user')
       throw new Error('Database query failed at creating user')
     }
-    if (result.rows.length === 0) {
-      console.error('Error creating user')
-      throw new Error('User creation failed')
+    if (user?.length === 0) {
+      return false
     }
 
-    // 6. Return the new user
-    return {
-      id: result.rows[0].id,
-      firstname: result.rows[0].firstname,
-      lastname: result.rows[0].lastname,
-      username: result.rows[0].username,
-      email: result.rows[0].email,
-      phonenumber: result.rows[0].phonenumber,
-      cellphonenumber: result.rows[0].cellphonenumber,
-      birth_date: result.rows[0].birth_date
+    // 8. Return the new user
+    return user
+  }
+
+  static async update ({ id, input }) {
+    const allowedFields = [
+      'firstName',
+      'lastName',
+      'username',
+      'email',
+      'birthdate',
+      'phoneNumber',
+      'cellphoneNumber'
+    ]
+    const fields = []
+    const values = []
+    let idx = 1
+    for (const key of allowedFields) {
+      if (key in input) {
+        fields.push(`${key} = $${idx}`)
+        values.push(input[key])
+        idx++
+      }
     }
+
+    if (fields.length === 0) {
+      throw new Error('No valid fields to update')
+    }
+    values.push(id)
+
+    const query = {
+      text: `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx} 
+      RETURNING id, firstName, lastName, username, email, birthdate, phoneNumber, cellphoneNumber`,
+      values
+    }
+    let user
+    try {
+      const { rows } = await pool.query(query)
+      user = rows[0]
+    } catch (error) {
+      console.error('Error updating user')
+      throw new Error('Database query failed at updating user')
+    }
+    if (!user || user.length === 0) {
+      return false
+    }
+
+    return user
+  }
+
+  static async softDeleteUser (id) {
+    const query = {
+      text: 'UPDATE users SET is_active = false WHERE id = $1 RETURNING *',
+      values: [id]
+    }
+
+    let result
+    try {
+      result = await pool.query(query)
+    } catch (error) {
+      console.error('Error deleting user')
+      throw new Error('Database query failed at deleting user')
+    }
+    if (result.rows.length === 0) return false
+    return true
   }
 
   static async saveResetToken ({ id, hashedToken, tokenExpiration }) {
@@ -123,7 +293,7 @@ export class UserModel {
       const result = await pool.query(query)
       return result.rows.length > 0
     } catch (error) {
-      console.error('Error updating user with reset token:', error)
+      console.error('Error updating user with reset token:')
       throw new Error('Database query failed at updating user')
     }
   }
@@ -168,23 +338,6 @@ export class UserModel {
       throw new Error('DB error updating password')
     }
     if (result.rowCount === 0) return false
-    return true
-  }
-
-  static async deleteUser (id) {
-    const query = {
-      text: 'DELETE FROM users WHERE id = $1 RETURNING *',
-      values: [id]
-    }
-
-    let result
-    try {
-      result = await pool.query(query)
-    } catch (error) {
-      console.error('Error deleting user')
-      throw new Error('Database query failed at deleting user')
-    }
-    if (result.rows.length === 0) return false
     return true
   }
 }

@@ -2,6 +2,10 @@ import z from 'zod'
 
 // User schema validation
 const userSchema = z.object({
+  id: z.string({
+    invalid_type_error: 'ID must be a string',
+    required_error: 'ID is required'
+  }).uuid('Invalid UUID format').optional(),
   firstName: z.string({
     invalid_type_error: 'First name must be a string',
     required_error: 'First name is required'
@@ -39,7 +43,7 @@ const userSchema = z.object({
     const parsed = new Date(date)
     return !isNaN(parsed.getTime())
   }, { message: 'Birthdate must be a valid date' }),
-  phonenumber: z.number({
+  phoneNumber: z.number({
     invalid_type_error: 'Phone number must be a number'
   })
     .positive({ message: 'Phone number must be a positive number' })
@@ -55,20 +59,31 @@ const userSchema = z.object({
     .optional()
 })
 
+// Validate passwords
+function validatePassword (password, passwordConfirmation, ctx) {
+  if (password && passwordConfirmation && password !== passwordConfirmation) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['passwordConfirmation'],
+      message: 'Passwords do not match'
+    })
+  }
+}
+
+// Validate user data
 export function validateUser (user) {
   const schema = userSchema
     .superRefine(({ password, passwordConfirmation }, ctx) => {
-      if (password !== passwordConfirmation) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['passwordConfirmation'],
-          message: 'Passwords do not match'
-        })
-      }
+      validatePassword(password, passwordConfirmation, ctx)
     })
   return schema.safeParse(user)
 }
 
+// Validate partial user data
 export function validatePartialUser (input) {
-  return userSchema.partial().safeParse(input)
+  // Se utiliza partial() para permitir que algunos campos sean opcionales
+  return userSchema.partial().superRefine(({ password, passwordConfirmation }, ctx) => {
+    // Solo se valida la coincidencia de las contraseñas si ambas están presentes
+    validatePassword(password, passwordConfirmation, ctx)
+  }).safeParse(input)
 }
