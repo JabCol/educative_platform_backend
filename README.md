@@ -1,4 +1,3 @@
-````markdown
 # 📚 Plataforma Educativa - Backend
 
 Este proyecto es la parte **backend** de una plataforma educativa destinada a una fundación que atiende a niños de bajos recursos. El objetivo es ofrecer una base sólida para futuras funcionalidades pedagógicas, permitiendo la **gestión de usuarios**, **asignación de roles** y **protección de rutas**. Actualmente, se encuentra en desarrollo.
