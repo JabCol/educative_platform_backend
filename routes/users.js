@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { UserController } from '../controllers/user.js'
-import { requireAuth } from '../middleware/authentication.js'
+import { requireAuth, requireAdmin } from '../middleware/authentication.js'
 import { upload } from '../middleware/file.js'
 
 export const createUserModel = ({ userModel, roleModel }) => {
@@ -11,7 +11,7 @@ export const createUserModel = ({ userModel, roleModel }) => {
 
   userRouter.get('/', requireAuth, userController.getAll)
   userRouter.get('/:id', requireAuth, userController.getById)
-  userRouter.post('/create', requireAuth, userController.create)
+  userRouter.post('/create', requireAuth, requireAdmin, userController.create)
   userRouter.patch('/update', requireAuth, userController.update)
   userRouter.delete('/delete', requireAuth, userController.delete)
   userRouter.post('/bulk-create', requireAuth, upload.single('file'), userController.bulkCreateUsers)

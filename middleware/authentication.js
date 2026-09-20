@@ -1,14 +1,22 @@
 import jwt from 'jsonwebtoken'
 import { SECRET_JWT_KEY } from '../config.js'
 
-export function requireAuth (req, res, next) {
+export function requireAuth(req, res, next) {
   if (!req.session?.user) {
     return res.status(401).json({ message: 'Unauthorized' })
   }
   next()
 }
 
-export function verifyToken (req, res, next) {
+export function requireAdmin(req, res, next) {
+  if (!req.session?.user.roles.some(role => role.name === 'admin')) {
+    return res.status(403).json({ message: 'Forbidden' })
+  }
+
+  next()
+}
+
+export function verifyToken(req, res, next) {
   const token = req.cookies?.access_token
   req.session = { user: null }
 

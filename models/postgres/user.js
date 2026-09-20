@@ -25,7 +25,28 @@ export class UserModel {
       return false
     }
 
-    return existingUser.rows[0]
+    const user = existingUser.rows[0]
+
+    const queryRoles = {
+      text: `SELECT r.id, r.name
+                        FROM users_roles as ur
+                        JOIN roles as r ON ur.roleId = r.id
+                        WHERE ur.userId = $1`,
+      values: [user.id]
+    }
+
+    let roles
+    try {
+      const { rows } = await pool.query(queryRoles)
+      roles = rows
+    } catch (error) {
+      console.error('Error getting user roles')
+      throw new Error('Database query failed at getting user roles')
+    }
+
+    const userWithRole = {...user, roles}
+
+    return userWithRole
   }
 
   static async getById (id) {
