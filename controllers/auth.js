@@ -105,7 +105,9 @@ export class AuthController {
 
       const user = await this.userModel.getUser(result.data)
       if (user === false) {
-        return res.status(401).json({ error: 'Account not found' })
+        return res.status(200).json({
+          message: 'If an account is associated with this username, password reset instructions will be sent.'
+        })
       }
 
       const resetToken = crypto.randomBytes(32).toString('hex')
@@ -132,10 +134,9 @@ export class AuthController {
       }
 
       res.status(200).json({
-        message: 'Reset password link generated'
+        message: 'If an account is associated with this username, password reset instructions will be sent.'
       })
     } catch (error) {
-      console.error('Error in forgotPassword:', error.message)
       res.status(500).json({ error: 'Could not send reset password email.' })
     }
   }
