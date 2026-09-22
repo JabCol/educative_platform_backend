@@ -26,44 +26,42 @@ export class AuthController {
    * @returns {Promise<void>}
    */
   login = async (req, res) => {
-    const result = validatePartialUser(req.body)
-    if (result.error) {
-      return res.status(400).json({ error: JSON.parse(result.error.message) })
-    }
-
-    const user = await this.userModel.getUser(result.data)
-    if (user === false) {
-      return res.status(401).json({ error: 'Invalid credentials!!!' })
-    }
-
-    const { password } = result.data
-    let isValid
     try {
-      isValid = await this.userModel.comparePassword({ id: user.id, password })
+      const result = validatePartialUser(req.body)
+      if (result.error) {
+        return res.status(400).json({ error: JSON.parse(result.error.message) })
+      }
+
+      const user = await this.userModel.getUser(result.data)
+      if (user === false) {
+        return res.status(401).json({ error: 'Invalid credentials!!!' })
+      }
+
+      const { password } = result.data
+      const isValid = await this.userModel.comparePassword({ id: user.id, password })
+
+      if (isValid === false) {
+        return res.status(401).json({ error: 'Invalid credentials!!!' })
+      }
+
+      const token = jwt.sign(
+        { id: user.id, username: user.username, roles: user.roles },
+        SECRET_JWT_KEY,
+        { expiresIn: '1h' }
+      )
+
+      res
+        .cookie('access_token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 3600000 // 1 hour
+        })
+        .status(200)
+        .json({ message: 'Logged In!!!', id: user.id, roles: user.roles })
     } catch (error) {
-      console.error('Error comparing password')
-      throw new Error('Password comparison failed')
+      res.status(500).json({ error: 'Could not complete login operation.' })
     }
-
-    if (isValid === false) {
-      return res.status(401).json({ error: 'Invalid credentials!!!' })
-    }
-
-    const token = jwt.sign(
-      { id: user.id, username: user.username, roles: user.roles },
-      SECRET_JWT_KEY,
-      { expiresIn: '1h' }
-    )
-
-    res
-      .cookie('access_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 3600000 // 1 hour
-      })
-      .status(200)
-      .json({ message: 'Logged In!!!', id: user.id, roles: user.roles })
   }
 
   /**
@@ -75,13 +73,18 @@ export class AuthController {
    * @returns {Promise<void>}
    */
   logout = async (req, res) => {
-    res
-      .clearCookie('access_token', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
-      })
-      .json({ message: 'Logged out successfully' })
+    try {
+      res
+        .clearCookie('access_token', {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict'
+        })
+        .status(200)
+        .json({ message: 'Logged out successfully' })
+    } catch (error) {
+      res.status(500).json({ error: 'Could not complete logout operation.' })
+    }
   }
 
   /**
@@ -150,23 +153,27 @@ export class AuthController {
    * @returns {Promise<void>}
    */
   resetPassword = async (req, res) => {
-    const result = validatePartialUser(req.body)
-    if (result.error) {
-      return res.status(400).json({ error: JSON.parse(result.error.message) })
+    try {
+      const result = validatePartialUser(req.body)
+      if (result.error) {
+        return res.status(400).json({ error: JSON.parse(result.error.message) })
+      }
+
+      const { token } = req.params
+      const { password } = req.body
+
+      if (!token) return res.status(400).json({ error: 'Token is required' })
+
+      const hashedToken = crypto.createHash('sha256').update(token).digest('hex')
+
+      const user = await this.userModel.updatePassword({ hashedToken, password })
+      if (user === false) {
+        return res.status(401).json({ error: 'Invalid or expired token. Do the process again.' })
+      }
+
+      res.status(200).json({ message: 'Password updated successfully' })
+    } catch (error) {
+      res.status(500).json({ error: 'Could not reset password.' })
     }
-
-    const { token } = req.params
-    const { password } = req.body
-
-    if (!token) return res.status(400).json({ error: 'Token is required' })
-
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex')
-
-    const user = await this.userModel.updatePassword({ hashedToken, password })
-    if (user === false) {
-      return res.status(401).json({ error: 'Invalid or expired token. Do the process again.' })
-    }
-
-    res.status(200).json({ message: 'Password updated successfully' })
   }
 }
