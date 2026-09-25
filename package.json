@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development node --watch server_with_postgres.js",
     "start": "cross-env NODE_ENV=production node server_with_postgres.js",
-    "test": "cross-env NODE_ENV=test vitest --silent"
+    "test": "cross-env NODE_ENV=test SECRET_JWT_KEY=mock-secret-for-testing vitest --silent"
   },
   "keywords": [],
   "author": "",
