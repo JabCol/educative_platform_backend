@@ -4,8 +4,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "node --watch server_with_postgres.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "cross-env NODE_ENV=development node --watch server_with_postgres.js",
+    "start": "cross-env NODE_ENV=production node server_with_postgres.js",
+    "test": "cross-env NODE_ENV=test vitest --silent"
   },
   "keywords": [],
   "author": "",
@@ -27,6 +28,12 @@
     "zod": "3.24.3"
   },
   "devDependencies": {
-    "standard": "^17.1.2"
+    "cross-env": "^10.1.0",
+    "standard": "^17.1.2",
+    "supertest": "^7.3.0",
+    "vitest": "^5.0.1"
+  },
+  "overrides": {
+    "tar": "^7.4.3"
   }
 }

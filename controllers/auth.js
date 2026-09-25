@@ -1,8 +1,10 @@
-import { validatePartialUser } from '../schema/user.js'
 import jwt from 'jsonwebtoken'
 import { SECRET_JWT_KEY, URL_FRONT } from '../config.js'
 import { sendResetPasswordEmail } from '../services/email.js'
 import crypto from 'node:crypto'
+import { loginSchema } from '../schema/login.js'
+import { forgotPassword } from '../schema/forgotPassword.js'
+import { resetPasswordSchema } from '../schema/resetPassword.js'
 
 /**
  * Controller class to handle authentication flows including login, logout,
@@ -27,7 +29,7 @@ export class AuthController {
    */
   login = async (req, res) => {
     try {
-      const result = validatePartialUser(req.body)
+      const result = loginSchema.safeParse(req.body)
       if (result.error) {
         return res.status(400).json({ error: JSON.parse(result.error.message) })
       }
@@ -97,13 +99,9 @@ export class AuthController {
    */
   forgotPassword = async (req, res) => {
     try {
-      const result = validatePartialUser(req.body)
+      const result = forgotPassword.safeParse(req.body)
       if (result.error) {
         return res.status(400).json({ error: JSON.parse(result.error.message) })
-      }
-
-      if (!result.data.username) {
-        return res.status(400).json({ error: 'Username is required' })
       }
 
       const user = await this.userModel.getUser(result.data)
@@ -154,7 +152,7 @@ export class AuthController {
    */
   resetPassword = async (req, res) => {
     try {
-      const result = validatePartialUser(req.body)
+      const result = resetPasswordSchema.safeParse(req.body)
       if (result.error) {
         return res.status(400).json({ error: JSON.parse(result.error.message) })
       }

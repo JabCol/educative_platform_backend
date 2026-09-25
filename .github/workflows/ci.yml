@@ -1,0 +1,33 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  test-backend:
+    name: Backend Vitest Suite
+    runs-on: ubuntu-24.04
+
+    defaults:
+      run:
+        working-directory: ./
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js version
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+          cache-dependency-path: ./package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Execute test suite
+        run: npm test
