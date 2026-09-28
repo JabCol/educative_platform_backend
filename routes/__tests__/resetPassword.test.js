@@ -3,12 +3,12 @@ import request from 'supertest'
 import express from 'express'
 import { createAuthModel } from '../auth.js'
 
-// 1. Create a "Mock" of our model
+// Create a "Mock" of our model
 const mockUserModel = {
     updatePassword: vi.fn(),
 }
 
-// 2. Mini Express app
+// Mini Express app
 const app = express()
 app.use(express.json())
 app.use('/auth', createAuthModel({ userModel: mockUserModel }))

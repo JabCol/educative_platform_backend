@@ -4,18 +4,18 @@ import express from 'express'
 import { createAuthModel } from '../auth.js'
 import { sendResetPasswordEmail } from '../../services/email.js'
 
-// 1. Mock the email service function so it doesn't send real emails
+// Mock the email service function so it doesn't send real emails
 vi.mock('../../services/email.js', () => ({
     sendResetPasswordEmail: vi.fn()
 }))
 
-// 2. Create a "Mock" of our model
+// Create a "Mock" of our model
 const mockUserModel = {
     getUser: vi.fn(),
     saveResetToken: vi.fn(),
 }
 
-// 3. Mini Express app just for this test
+// Mini Express app just for this test
 const app = express()
 app.use(express.json())
 app.use('/auth', createAuthModel({ userModel: mockUserModel }))

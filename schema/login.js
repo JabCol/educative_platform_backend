@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { usernameValidation, passwordValidation } from "./commonRules";
+import { usernameValidation, passwordValidation } from "./commonRules.js";
 
 export const loginSchema = z.object({
     username: usernameValidation,

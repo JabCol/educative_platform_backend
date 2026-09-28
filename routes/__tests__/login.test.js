@@ -3,13 +3,13 @@ import request from 'supertest'
 import express from 'express'
 import { createAuthModel } from '../auth.js'
 
-// 1. Create a "Mock" of the User Model.
+// Create a "Mock" of the User Model.
 const mockUserModel = {
     getUser: vi.fn(),
     comparePassword: vi.fn(),
 }
 
-// 2. Configure a mini Express application just for this test
+// Configure a mini Express application just for this test
 const app = express()
 app.use(express.json()) // Required to parse req.body
 

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { passwordValidation } from "./commonRules";
+import { passwordValidation } from "./commonRules.js";
 
 export const resetPasswordSchema = z
     .object({

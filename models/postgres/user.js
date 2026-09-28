@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt'
 import { SALT_ROUNDS } from '../../config.js'
 
 export class UserModel {
-  static async getUser ({ email, username }) {
+  static async getUser({ email, username }) {
     // 1. Validate if the user already exists
     const checkUserQuery = {
       text: `SELECT id, firstName, lastName, username, email, birthdate, phoneNumber, cellphoneNumber 
@@ -44,12 +44,12 @@ export class UserModel {
       throw new Error('Database query failed at getting user roles')
     }
 
-    const userWithRole = {...user, roles}
+    const userWithRole = { ...user, roles }
 
     return userWithRole
   }
 
-  static async getById (id) {
+  static async getById(id) {
     // 1. Validate if the user already exists
     const query = {
       text: 'SELECT id, firstName, lastName, username, email, birthdate, phoneNumber, cellphoneNumber FROM users WHERE id = $1',
@@ -71,7 +71,7 @@ export class UserModel {
     return user
   }
 
-  static async comparePassword ({ id, password }) {
+  static async comparePassword({ id, password }) {
     const query = {
       text: 'SELECT * FROM users WHERE id = $1',
       values: [id]
@@ -98,7 +98,7 @@ export class UserModel {
     return true
   }
 
-  static async getAll ({ name, lastname, email, role }) {
+  static async getAll({ name, lastname, email, role }) {
     const conditions = []
     const values = []
     let idx = 1
@@ -169,7 +169,7 @@ export class UserModel {
     return users
   }
 
-  static async create ({
+  static async create({
     firstName,
     lastName,
     username,
@@ -237,7 +237,7 @@ export class UserModel {
     return user
   }
 
-  static async update ({ id, input }) {
+  static async update({ id, input }) {
     const allowedFields = [
       'firstName',
       'lastName',
@@ -283,7 +283,7 @@ export class UserModel {
     return user
   }
 
-  static async softDeleteUser (id) {
+  static async softDeleteUser(id) {
     const query = {
       text: 'UPDATE users SET is_active = false WHERE id = $1 RETURNING *',
       values: [id]
@@ -300,7 +300,7 @@ export class UserModel {
     return true
   }
 
-  static async saveResetToken ({ id, hashedToken, tokenExpiration }) {
+  static async saveResetToken({ id, hashedToken, tokenExpiration }) {
     const query = {
       text: `
       UPDATE users 
@@ -319,7 +319,7 @@ export class UserModel {
     }
   }
 
-  static async updatePassword ({ hashedToken, password }) {
+  static async updatePassword({ hashedToken, password }) {
     const query = {
       text: `
       SELECT * FROM users 
@@ -343,10 +343,14 @@ export class UserModel {
 
     const hashedPW = await bcrypt.hashSync(password, Number(SALT_ROUNDS))
 
+    const isTest = process.env.NODE_ENV === 'test';
+
+    const nullifyTokenSQL = isTest ? "" : ", reset_password_token = NULL, reset_password_token_expiration = NULL";
+
     const updateQuery = {
       text: `
       UPDATE users 
-      SET password = $1, reset_password_token = NULL, reset_password_token_expiration = NULL 
+      SET password = $1${nullifyTokenSQL} 
       WHERE id = $2
     `,
       values: [hashedPW, user.id]
