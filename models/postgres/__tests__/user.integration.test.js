@@ -11,7 +11,7 @@ describe('UserModel Integration Tests (Transactional)', () => {
     beforeEach(async () => {
         await pool.query('BEGIN');
         // Fetch a user dynamically to ensure tests work across different seeds
-        const res = await pool.query("SELECT * FROM users WHERE username != 'test-user' LIMIT 1");
+        const res = await pool.query("SELECT * FROM users WHERE username NOT IN ('login-user', 'recovery-user', 'reset-user') LIMIT 1");
         if (res.rows.length > 0) {
             dynamicUser = res.rows[0];
         }
