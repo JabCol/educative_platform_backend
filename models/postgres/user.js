@@ -3,15 +3,17 @@ import bcrypt from 'bcrypt'
 import { SALT_ROUNDS } from '../../config.js'
 
 export class UserModel {
-  static async getUser({ email, username }) {
+  static async getUser({ username }) {
+    if (!username) {
+      return false;
+    }
+
     // 1. Validate if the user already exists
     const checkUserQuery = {
       text: `SELECT id, firstName, lastName, username, email, birthdate, phoneNumber, cellphoneNumber 
               FROM users 
-              WHERE ($1::text IS NULL OR email = $1)
-              AND ($2::text IS NULL OR username = $2)
-          `,
-      values: [email || null, username || null]
+              WHERE username = $1`,
+      values: [username]
     }
 
     let existingUser
@@ -49,7 +51,7 @@ export class UserModel {
     return userWithRole
   }
 
-  static async getById(id) {
+  static async getById({ id }) {
     // 1. Validate if the user already exists
     const query = {
       text: 'SELECT id, firstName, lastName, username, email, birthdate, phoneNumber, cellphoneNumber FROM users WHERE id = $1',
@@ -64,7 +66,8 @@ export class UserModel {
       console.error('Error checking user existence')
       throw new Error('Database query failed at checking user existence')
     }
-    if (user.length <= 0) {
+
+    if (user === undefined || user.length === 0) {
       return false
     }
 
@@ -72,6 +75,10 @@ export class UserModel {
   }
 
   static async comparePassword({ id, password }) {
+    if (id === null || password === null) {
+      return false
+    }
+
     const query = {
       text: 'SELECT * FROM users WHERE id = $1',
       values: [id]
@@ -181,8 +188,8 @@ export class UserModel {
   }) {
     // 1. Validate if the user already exists
     const checkUserQuery = {
-      text: 'SELECT * FROM users WHERE username = $1 OR email = $2',
-      values: [username, email]
+      text: 'SELECT * FROM users WHERE username = $1',
+      values: [username]
     }
     let existingUser
     try {
