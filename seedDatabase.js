@@ -43,7 +43,7 @@ async function seedDatabase(userCount = 48) {
                 lastname: 'login-ser',
                 username: 'login-user', // Use this for LoginPage.spec.ts
                 email: 'nicolvaleria0919@gmail.com',
-                password: '$2b$10$nNopzgI3Fi1O8HpIrbiJt.wPj3WIm12RaxrRKb38WQERJAplVAW0a', // Edu_testUser1!
+                password: '$2b$10$ma9Hoq0r3b.T72rZOmxae.whByxcnWzKUACbhhAzn/rAg0cCEiRAa', // Edu_testUser1!
                 birthdate: '1990-04-16',
                 phonenumber: '6012345678',
                 cellphonenumber: '3094158989'
@@ -54,7 +54,7 @@ async function seedDatabase(userCount = 48) {
                 lastname: 'User',
                 username: 'recovery-user', // Use this for RecoveryPage.spec.ts
                 email: 'recovery@example.com',
-                password: '$2b$10$nNopzgI3Fi1O8HpIrbiJt.wPj3WIm12RaxrRKb38WQERJAplVAW0a', // Edu_testUser1!
+                password: '$2b$10$ma9Hoq0r3b.T72rZOmxae.whByxcnWzKUACbhhAzn/rAg0cCEiRAa', // Edu_testUser1!
                 birthdate: '1990-04-16',
                 phonenumber: '6012345678',
                 cellphonenumber: '3094158989'
@@ -65,7 +65,7 @@ async function seedDatabase(userCount = 48) {
                 lastname: 'User',
                 username: 'reset-user', // Use this for ResetPassword.spec.ts
                 email: 'reset@example.com',
-                password: '$2b$10$nNopzgI3Fi1O8HpIrbiJt.wPj3WIm12RaxrRKb38WQERJAplVAW0a', // Edu_testUser1!
+                password: '$2b$10$ma9Hoq0r3b.T72rZOmxae.whByxcnWzKUACbhhAzn/rAg0cCEiRAa', // Edu_testUser1!
                 birthdate: '1990-04-16',
                 phonenumber: '6012345678',
                 cellphonenumber: '3094158989',
