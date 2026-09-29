@@ -183,7 +183,7 @@ describe('UserModel Integration Tests (Transactional)', () => {
             const duplicateUser = {
                 firstName: "Copy",
                 lastName: "Cat",
-                username: "kaela.green14", // Already seeded username
+                username: dynamicUser.username, // Use dynamic user to ensure it already exists
                 email: "copycat@example.com",
                 password: "StrongPassword123!",
                 birthdate: "1995-01-01",

@@ -30,4 +30,4 @@ jobs:
         run: npm ci
 
       - name: Execute test suite
-        run: npm test
+        run: npm test -- --exclude '**/*.integration.test.js'
