@@ -8,6 +8,8 @@
     "dev:test": "cross-env NODE_ENV=test node --watch server_with_postgres.js",
     "start": "cross-env NODE_ENV=production node server_with_postgres.js",
     "test": "cross-env NODE_ENV=test SECRET_JWT_KEY=mock-secret-for-testing vitest",
+    "test:unit": "cross-env NODE_ENV=test SECRET_JWT_KEY=mock-secret-for-testing vitest run routes/",
+    "test:integration": "cross-env NODE_ENV=test SECRET_JWT_KEY=mock-secret-for-testing vitest run models/",
     "seed:dev": "cross-env NODE_ENV=development node seedDatabase.js",
     "seed:test": "cross-env NODE_ENV=test node seedDatabase.js"
   },
