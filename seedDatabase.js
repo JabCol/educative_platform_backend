@@ -2,11 +2,19 @@ import pool from './models/postgres/connection.js';
 import { faker } from '@faker-js/faker';
 import bcrypt from 'bcrypt';
 import { SALT_ROUNDS } from './config.js';
+import fs from 'fs/promises';
+import path from 'path';
 
-async function seedDatabase(userCount = 50) {
+async function seedDatabase(userCount = 48) {
     console.log('🌱 Starting database seed...');
 
     try {
+        // --- STEP 0: CLEAR EXISTING DATA ---
+        console.log("0. Clearing existing data...");
+        await pool.query('DELETE FROM users_roles');
+        await pool.query('DELETE FROM users');
+        await pool.query('DELETE FROM roles');
+
         // --- STEP 1: ENSURE ROLES EXIST ---
         console.log("1. Setting up roles...");
         await pool.query(`
@@ -31,12 +39,35 @@ async function seedDatabase(userCount = 50) {
         const hardcodedUsers = [
             {
                 id: '784ca42a-3cb8-4b57-8425-ae89ca4b2213',
-                firstname: 'Usuario',
-                lastname: 'Prueba',
-                username: 'test-user',
+                firstname: 'login-user',
+                lastname: 'login-ser',
+                username: 'login-user', // Use this for LoginPage.spec.ts
                 email: 'nicolvaleria0919@gmail.com',
-                password: '$2b$10$h4G89Xoo1.B3sSyTV/asEuqVjo7x.MzaPWth1DWDRQNv/jnwQinxG',
+                password: '$2b$10$nNopzgI3Fi1O8HpIrbiJt.wPj3WIm12RaxrRKb38WQERJAplVAW0a', // Edu_testUser1!
                 birthdate: '1990-04-16',
+                phonenumber: '6012345678',
+                cellphonenumber: '3094158989'
+            },
+            {
+                id: 'b6e9a66d-1144-4861-ba2c-297c17d8f4bc',
+                firstname: 'Recovery',
+                lastname: 'User',
+                username: 'recovery-user', // Use this for RecoveryPage.spec.ts
+                email: 'recovery@example.com',
+                password: '$2b$10$nNopzgI3Fi1O8HpIrbiJt.wPj3WIm12RaxrRKb38WQERJAplVAW0a', // Edu_testUser1!
+                birthdate: '1990-04-16',
+                phonenumber: '6012345678',
+                cellphonenumber: '3094158989'
+            },
+            {
+                id: 'f1911961-4560-498c-8f42-4f3abde26226',
+                firstname: 'Reset',
+                lastname: 'User',
+                username: 'reset-user', // Use this for ResetPassword.spec.ts
+                email: 'reset@example.com',
+                password: '$2b$10$nNopzgI3Fi1O8HpIrbiJt.wPj3WIm12RaxrRKb38WQERJAplVAW0a', // Edu_testUser1!
+                birthdate: '1990-04-16',
+                phonenumber: '6012345678',
                 cellphonenumber: '3094158989',
                 reset_password_token: '898f365afbd6bd0823770539bfc0e24e8068b1b42b85cce07f7e58049e396263',
                 reset_password_token_expiration: 'infinity'
@@ -45,21 +76,28 @@ async function seedDatabase(userCount = 50) {
 
         for (const user of hardcodedUsers) {
             const query = `
-                INSERT INTO users (id, "firstname", "lastname", username, email, password, birthdate, "cellphonenumber", reset_password_token, reset_password_token_expiration)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                INSERT INTO users (id, "firstname", "lastname", username, email, password, birthdate, "phonenumber", "cellphonenumber", reset_password_token, reset_password_token_expiration)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                 ON CONFLICT (id) DO NOTHING
                 RETURNING id
             `;
             const result = await pool.query(query, [
                 user.id, user.firstname, user.lastname, user.username, user.email,
-                user.password, user.birthdate, user.cellphonenumber,
-                user.reset_password_token, user.reset_password_token_expiration
+                user.password, user.birthdate, user.phonenumber, user.cellphonenumber,
+                user.reset_password_token || null, user.reset_password_token_expiration || null
             ]);
 
             // Only add them to the lists if they were successfully inserted
             if (result.rows.length > 0) {
                 createdUserIds.push(user.id);
-                cheatSheet.push({ role: 'TEACHER (Hardcoded)', username: user.username, email: user.email, password: '(Your original password)' });
+
+                // For the cheat sheet, login-user is a teacher, the others are students
+                let displayRole = 'STUDENT (Hardcoded)';
+                if (user.id === '784ca42a-3cb8-4b57-8425-ae89ca4b2213') {
+                    displayRole = 'TEACHER (Hardcoded)';
+                }
+
+                cheatSheet.push({ role: displayRole, username: user.username, email: user.email, password: 'Edu_testUser1!' });
             }
         }
 
@@ -116,11 +154,13 @@ async function seedDatabase(userCount = 50) {
             // Explicitly assign roles based on the exact UUIDs for the hardcoded users
             if (userId === '784ca42a-3cb8-4b57-8425-ae89ca4b2213') {
                 assignedRoleId = teacherRole.id; // Test User -> Teacher
-            } else if (i === 1) {
-                // The first random user (index 1 overall) becomes the Admin
+            } else if (userId === 'b6e9a66d-1144-4861-ba2c-297c17d8f4bc' || userId === 'f1911961-4560-498c-8f42-4f3abde26226') {
+                assignedRoleId = studentRole.id; // E2E Users -> Students
+            } else if (i === 3) {
+                // The first random user (index 3 overall) becomes the Admin
                 assignedRoleId = adminRole.id;
-            } else if (i > 1 && i <= 5) {
-                // The next 4 random users become teachers
+            } else if (i > 3 && i <= 7) {
+                // The next 4 random users become teachers (keeps the total teachers at exactly 5)
                 assignedRoleId = teacherRole.id;
             } else {
                 // Everyone else is a student
@@ -139,6 +179,29 @@ async function seedDatabase(userCount = 50) {
         console.log('\n--- 🔑 CREDENTIALS CHEAT SHEET ---');
         console.table(cheatSheet);
         console.log('----------------------------------\n');
+
+        // --- STEP 4: SAVE CREDENTIALS TO TEXT FILE ---
+        const envName = process.env.NODE_ENV === 'test' ? 'Test' : 'Dev';
+        const fileName = `exampleCredentials${envName}.txt`;
+        const dirPath = path.join(process.cwd(), 'data_examples');
+        const filePath = path.join(dirPath, fileName);
+
+        await fs.mkdir(dirPath, { recursive: true });
+
+        let fileContent = `=== CREDENTIALS CHEAT SHEET (${envName}) ===\n`;
+        fileContent += `Generated at: ${new Date().toLocaleString()}\n\n`;
+
+        for (const cred of cheatSheet) {
+            fileContent += `Role: ${cred.role}\n`;
+            fileContent += `Username: ${cred.username}\n`;
+            fileContent += `Email: ${cred.email}\n`;
+            fileContent += `Password: ${cred.password}\n`;
+            fileContent += `-------------------------\n`;
+        }
+
+        await fs.writeFile(filePath, fileContent, 'utf-8');
+        console.log(`📝 Credentials automatically saved to: data_examples/${fileName}\n`);
+
 
     } catch (error) {
         console.error('❌ Error during seeding:', error);

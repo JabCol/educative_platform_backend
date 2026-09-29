@@ -39,6 +39,12 @@ export const sendResetPasswordEmail = async ({ toEmail, resetUrl }) => {
       </div>
     `
     }
+    if (process.env.NODE_ENV === 'test') {
+        console.log(`[TEST MODE] Mock email successfully generated for: ${toEmail}`)
+        console.log(`[TEST MODE] Mock Reset Link: ${resetUrl}`)
+        // We return a mock successful response so the controller continues properly
+        return { accepted: [toEmail] }
+    }
 
     return await transporter.sendMail(mailOptions)
 }
