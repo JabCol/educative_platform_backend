@@ -16,7 +16,7 @@ export function requireAdmin(req, res, next) {
   next()
 }
 
-export function verifyToken(req, res, next) {
+export function verifyToken(req, _, next) {
   const token = req.cookies?.access_token
   req.session = { user: null }
 
@@ -24,7 +24,6 @@ export function verifyToken(req, res, next) {
 
   try {
     const data = jwt.verify(token, SECRET_JWT_KEY)
-    console.log('Token data:', data)
     req.session.user = data
   } catch (error) {
     console.warn('Invalid token')

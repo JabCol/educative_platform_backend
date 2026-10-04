@@ -7,6 +7,11 @@ import { createRoleModel } from './routes/roles.js'
 import { verifyToken } from './middleware/authentication.js'
 import cookieParser from 'cookie-parser'
 
+const preventCaching = (req, res, next) => {
+  res.set('Cache-Control', 'no-store')
+  next()
+}
+
 export const createApp = ({ userModel, roleModel }) => {
   const app = express()
 
@@ -16,6 +21,8 @@ export const createApp = ({ userModel, roleModel }) => {
   app.use(corsMiddleware()) // Middleware to handle CORS
   app.use(verifyToken)
   app.disable('x-powered-by')
+
+  app.use(preventCaching)
 
   app.use('/auth', createAuthModel({ userModel }))
   app.use('/users', createUserModel({ userModel, roleModel }))

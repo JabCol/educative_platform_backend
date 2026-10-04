@@ -19,6 +19,14 @@ export class AuthController {
     this.userModel = userModel
   }
 
+  me = async (req, res) => {
+    res.status(200).json({
+      id: req.session.user.id,
+      roles: req.session.user.roles,
+      permissions: req.session.user.permissions
+    })
+  }
+
   /**
    * Authenticates user credentials and issues an HTTP-only JWT cookie upon success.
    *
@@ -47,7 +55,7 @@ export class AuthController {
       }
 
       const token = jwt.sign(
-        { id: user.id, username: user.username, roles: user.roles },
+        { id: user.id, username: user.username, roles: user.roles, permissions: user.permissions },
         SECRET_JWT_KEY,
         { expiresIn: '1h' }
       )
@@ -57,10 +65,11 @@ export class AuthController {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'strict',
+          path: '/',
           maxAge: 3600000 // 1 hour
         })
         .status(200)
-        .json({ message: 'Logged In!!!', id: user.id, roles: user.roles })
+        .json({ message: 'Logged In!!!', id: user.id, roles: user.roles, permissions: user.permissions })
     } catch (error) {
       res.status(500).json({ error: 'Could not complete login operation.' })
     }
@@ -80,7 +89,8 @@ export class AuthController {
         .clearCookie('access_token', {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict'
+          sameSite: 'strict',
+          path: '/',
         })
         .status(200)
         .json({ message: 'Logged out successfully' })

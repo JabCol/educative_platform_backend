@@ -11,6 +11,8 @@ async function seedDatabase(userCount = 48) {
     try {
         // --- STEP 0: CLEAR EXISTING DATA ---
         console.log("0. Clearing existing data...");
+        await pool.query('DELETE FROM roles_permissions');
+        await pool.query('DELETE FROM permissions');
         await pool.query('DELETE FROM users_roles');
         await pool.query('DELETE FROM users');
         await pool.query('DELETE FROM roles');
@@ -21,6 +23,68 @@ async function seedDatabase(userCount = 48) {
             INSERT INTO roles (name) VALUES ('student'), ('teacher'), ('admin')
             ON CONFLICT DO NOTHING
         `);
+
+        // --- STEP 1.1: SET UP PERMISSIONS ---
+        console.log("1.1 Setting up permissions and role mappings...");
+        const permissionsList = [
+            // Users CRUD
+            'users:create', 'users:read', 'users:update', 'users:delete',
+            // Students CRUD
+            'students:create', 'students:read', 'students:update', 'students:delete',
+            // Courses CRUD
+            'courses:create', 'courses:read', 'courses:update', 'courses:delete',
+            // Grades CRUD
+            'grades:create', 'grades:read', 'grades:update', 'grades:delete',
+            // Teachers CRUD
+            'teachers:create', 'teachers:read', 'teachers:update', 'teachers:delete',
+            // Classes CRUD
+            'classes:create', 'classes:read', 'classes:update', 'classes:delete',
+            // Activities CRUD
+            'activities:create', 'activities:read', 'activities:update', 'activities:delete',
+            // Reports (read-only for now)
+            'reports:read',
+            // Achievements CRUD
+            'achievements:create', 'achievements:read', 'achievements:update', 'achievements:delete'
+        ];
+
+        for (const perm of permissionsList) {
+            await pool.query(`INSERT INTO permissions (name) VALUES ($1) ON CONFLICT DO NOTHING`, [perm]);
+        }
+
+        // 1. Admin gets ALL permissions
+        await pool.query(`
+            INSERT INTO roles_permissions (roleid, permissionid)
+            SELECT r.id, p.id FROM roles r, permissions p WHERE r.name = 'admin'
+            ON CONFLICT DO NOTHING
+        `);
+
+        // 2. Teacher gets specific permissions
+        const teacherPerms = [
+            'students:read',
+            'courses:read', 'courses:update',
+            'grades:create', 'grades:read', 'grades:update',
+            'classes:create', 'classes:read', 'classes:update',
+            'activities:create', 'activities:read', 'activities:update', 'activities:delete',
+            'reports:read',
+            'achievements:create', 'achievements:read'
+        ];
+        for (const perm of teacherPerms) {
+            await pool.query(`
+                INSERT INTO roles_permissions (roleid, permissionid)
+                SELECT r.id, p.id FROM roles r, permissions p WHERE r.name = 'teacher' AND p.name = $1
+                ON CONFLICT DO NOTHING
+            `, [perm]);
+        }
+
+        // 3. Student gets only read-only specific permissions
+        const studentPerms = ['courses:read', 'grades:read', 'classes:read', 'activities:read', 'achievements:read'];
+        for (const perm of studentPerms) {
+            await pool.query(`
+                INSERT INTO roles_permissions (roleid, permissionid)
+                SELECT r.id, p.id FROM roles r, permissions p WHERE r.name = 'student' AND p.name = $1
+                ON CONFLICT DO NOTHING
+            `, [perm]);
+        }
 
         const rolesResult = await pool.query('SELECT id, name FROM roles');
         const roles = rolesResult.rows;
@@ -125,6 +189,9 @@ async function seedDatabase(userCount = 48) {
                 cheatSheet.push({ role: 'ADMIN', username: username, email: email, password: rawPassword });
             } else if (i > 0 && i <= 4) {
                 cheatSheet.push({ role: 'TEACHER', username: username, email: email, password: rawPassword });
+            } else if (i >= 5 && i <= 9) {
+                // The next 5 random users are students (see STEP 3: everyone after the teachers is a student)
+                cheatSheet.push({ role: 'STUDENT', username: username, email: email, password: rawPassword });
             }
 
             const userQuery = `

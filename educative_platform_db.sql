@@ -1,8 +1,3 @@
-DROP DATABASE IF EXISTS educative_platform_db;
-
-CREATE DATABASE educative_platform_db;
-
-\c educative_platform_db;
 
 CREATE TABLE users (
     id UUID PRIMARY KEY,
@@ -37,7 +32,7 @@ CREATE TABLE users_roles (
 );
 
 CREATE TABLE permissions (
-    permissionid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL UNIQUE
 );
 

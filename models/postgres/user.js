@@ -46,7 +46,25 @@ export class UserModel {
       throw new Error('Database query failed at getting user roles')
     }
 
-    const userWithRole = { ...user, roles }
+    const queryPermissions = {
+      text: `SELECT DISTINCT p.name
+                        FROM users_roles ur
+                        JOIN roles_permissions rp ON ur.roleid = rp.roleid
+                        JOIN permissions p ON rp.permissionid = p.id
+                        WHERE ur.userid = $1`,
+      values: [user.id]
+    }
+
+    let permissions
+    try {
+      const { rows } = await pool.query(queryPermissions)
+      permissions = rows.map(row => row.name) // Extract just the names into an array
+    } catch (error) {
+      console.error('Error getting user permissions')
+      throw new Error('Database query failed at getting user permissions')
+    }
+
+    const userWithRole = { ...user, roles, permissions }
 
     return userWithRole
   }

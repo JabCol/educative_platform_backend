@@ -51,7 +51,9 @@ jobs:
         run: npm ci
 
       - name: Initialize Database Schema
-        run: PGPASSWORD=mysecretpassword psql -h localhost -U postgres -d postgres -f ./educative_platform_db.sql
+        run: |
+          PGPASSWORD=mysecretpassword psql -h localhost -U postgres -d postgres -c "DROP DATABASE IF EXISTS educative_platform_db; CREATE DATABASE educative_platform_db;"
+          PGPASSWORD=mysecretpassword psql -h localhost -U postgres -d educative_platform_db -f ./educative_platform_db.sql
 
       - name: Seed Database
         run: npm run seed:test

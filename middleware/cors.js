@@ -6,9 +6,9 @@ const ACCEPTED_ORIGINS = [
   'http://localhost:5173'
 ]
 
-export const corsMiddleware = ({ accetedOrigins = ACCEPTED_ORIGINS } = {}) => cors({
+export const corsMiddleware = ({ acceptedOrigins = ACCEPTED_ORIGINS } = {}) => cors({
   origin: (origin, callback) => {
-    if (accetedOrigins.includes(origin)) {
+    if (acceptedOrigins.includes(origin)) {
       return callback(null, true)
     }
 
@@ -17,5 +17,6 @@ export const corsMiddleware = ({ accetedOrigins = ACCEPTED_ORIGINS } = {}) => co
     }
 
     return callback(new Error('Not allowed by CORS'))
-  }
+  },
+  credentials: true
 })
