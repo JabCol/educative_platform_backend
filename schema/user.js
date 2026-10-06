@@ -17,7 +17,8 @@ const userSchema = z.object({
   username: z.string({
     invalid_type_error: 'Username must be a string',
     required_error: 'Username is required'
-  }),
+  })
+    .min(1, { message: "The username must have at least one character." }),
   email: z.string({
     invalid_type_error: 'Email must be a string',
     required_error: 'Email is required'
@@ -60,7 +61,7 @@ const userSchema = z.object({
 })
 
 // Validate passwords
-function validatePassword (password, passwordConfirmation, ctx) {
+function validatePassword(password, passwordConfirmation, ctx) {
   if (password && passwordConfirmation && password !== passwordConfirmation) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -71,7 +72,7 @@ function validatePassword (password, passwordConfirmation, ctx) {
 }
 
 // Validate user data
-export function validateUser (user) {
+export function validateUser(user) {
   const schema = userSchema
     .superRefine(({ password, passwordConfirmation }, ctx) => {
       validatePassword(password, passwordConfirmation, ctx)
@@ -80,7 +81,7 @@ export function validateUser (user) {
 }
 
 // Validate partial user data
-export function validatePartialUser (input) {
+export function validatePartialUser(input) {
   // Se utiliza partial() para permitir que algunos campos sean opcionales
   return userSchema.partial().superRefine(({ password, passwordConfirmation }, ctx) => {
     // Solo se valida la coincidencia de las contraseñas si ambas están presentes

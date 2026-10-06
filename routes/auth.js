@@ -8,8 +8,9 @@ export const createAuthModel = ({ userModel }) => {
 
   const authController = new AuthController({ userModel })
 
+  authRouter.get('/me', requireAuth, authController.me)
   authRouter.post('/login', authController.login)
-  authRouter.get('/logout', requireAuth, authController.logout)
+  authRouter.get('/logout', authController.logout)
   authRouter.post('/forgot-password', authController.forgotPassword)
   authRouter.patch('/reset-password/:token', authController.resetPassword)
 

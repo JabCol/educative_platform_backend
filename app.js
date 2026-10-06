@@ -4,8 +4,13 @@ import { corsMiddleware } from './middleware/cors.js'
 import { createAuthModel } from './routes/auth.js'
 import { createUserModel } from './routes/users.js'
 import { createRoleModel } from './routes/roles.js'
-import { verifyToken } from './middleware/authentication.js'
+import { requireAuth, verifyToken } from './middleware/authentication.js'
 import cookieParser from 'cookie-parser'
+
+const preventCaching = (req, res, next) => {
+  res.set('Cache-Control', 'no-store')
+  next()
+}
 
 export const createApp = ({ userModel, roleModel }) => {
   const app = express()
@@ -17,8 +22,10 @@ export const createApp = ({ userModel, roleModel }) => {
   app.use(verifyToken)
   app.disable('x-powered-by')
 
+  app.use(preventCaching)
+
   app.use('/auth', createAuthModel({ userModel }))
-  app.use('/users', createUserModel({ userModel, roleModel }))
+  app.use('/users', requireAuth, createUserModel({ userModel, roleModel }))
   app.use('/roles', createRoleModel({ roleModel }))
   // La última a la que va a llegar
   app.use((req, res) => {

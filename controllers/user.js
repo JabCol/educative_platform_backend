@@ -1,7 +1,7 @@
 import { validateUser, validatePartialUser } from '../schema/user.js'
 
 export class UserController {
-  constructor ({ userModel, roleModel }) {
+  constructor({ userModel, roleModel }) {
     this.userModel = userModel
     this.roleModel = roleModel
   }
@@ -24,7 +24,7 @@ export class UserController {
       return res.status(400).json({ error: JSON.parse(validation.error.message) })
     }
 
-    const user = await this.userModel.getById(id)
+    const user = await this.userModel.getById({ id })
     const roles = await this.roleModel.getByUserId({ userId: user.id })
     if (user === false) {
       return res.status(404).json({ error: 'User not found' })

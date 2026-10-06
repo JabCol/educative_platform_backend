@@ -1,0 +1,63 @@
+name: Backend Integration Tests
+
+on:
+  push:
+    branches: ["main", "dev"]
+  pull_request:
+    branches: ["main", "dev"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: mysecretpassword
+          # We omit POSTGRES_DB so it starts with the default database.
+          # Your SQL script will automatically create 'educative_platform_db'
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      SECRET_JWT_KEY: mock-secret-for-testing
+      DB_HOST_TEST: localhost
+      DB_USER_TEST: postgres
+      DB_PASSWORD_TEST: mysecretpassword
+      # Since GitHub Actions is a disposable environment, we can just connect to the DB created by your SQL script
+      DB_NAME_TEST: educative_platform_db
+      DB_PORT_TEST: 5432
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Initialize Database Schema
+        run: |
+          PGPASSWORD=mysecretpassword psql -h localhost -U postgres -d postgres -c "DROP DATABASE IF EXISTS educative_platform_db;"
+          PGPASSWORD=mysecretpassword psql -h localhost -U postgres -d postgres -c "CREATE DATABASE educative_platform_db;"
+          PGPASSWORD=mysecretpassword psql -h localhost -U postgres -d educative_platform_db -f ./educative_platform_db.sql
+
+      - name: Seed Database
+        run: npm run seed:test
+
+      - name: Run Vitest Tests
+        run: npm run test:integration

@@ -4,8 +4,14 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "node --watch server_with_postgres.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "cross-env NODE_ENV=development node --watch server_with_postgres.js",
+    "dev:test": "cross-env NODE_ENV=test node --watch server_with_postgres.js",
+    "start": "cross-env NODE_ENV=production node server_with_postgres.js",
+    "test": "cross-env NODE_ENV=test SECRET_JWT_KEY=mock-secret-for-testing vitest",
+    "test:unit": "cross-env NODE_ENV=test SECRET_JWT_KEY=mock-secret-for-testing vitest run routes/",
+    "test:integration": "cross-env NODE_ENV=test SECRET_JWT_KEY=mock-secret-for-testing vitest run models/",
+    "seed:dev": "cross-env NODE_ENV=development node seedDatabase.js",
+    "seed:test": "cross-env NODE_ENV=test node seedDatabase.js"
   },
   "keywords": [],
   "author": "",
@@ -22,10 +28,18 @@
     "express": "5.1.0",
     "jsonwebtoken": "9.0.2",
     "multer": "1.4.5-lts.2",
+    "nodemailer": "^10.0.10",
     "pg": "8.14.1",
     "zod": "3.24.3"
   },
   "devDependencies": {
-    "standard": "^17.1.2"
+    "@faker-js/faker": "10.6.0",
+    "cross-env": "10.1.0",
+    "standard": "17.1.2",
+    "supertest": "7.3.0",
+    "vitest": "5.0.1"
+  },
+  "overrides": {
+    "tar": "^7.5.21"
   }
 }

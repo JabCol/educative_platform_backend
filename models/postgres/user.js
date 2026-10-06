@@ -3,15 +3,17 @@ import bcrypt from 'bcrypt'
 import { SALT_ROUNDS } from '../../config.js'
 
 export class UserModel {
-  static async getUser ({ email, username }) {
+  static async getUser({ username }) {
+    if (!username) {
+      return false;
+    }
+
     // 1. Validate if the user already exists
     const checkUserQuery = {
       text: `SELECT id, firstName, lastName, username, email, birthdate, phoneNumber, cellphoneNumber 
               FROM users 
-              WHERE ($1::text IS NULL OR email = $1)
-              AND ($2::text IS NULL OR username = $2)
-          `,
-      values: [email || null, username || null]
+              WHERE username = $1`,
+      values: [username]
     }
 
     let existingUser
@@ -25,10 +27,49 @@ export class UserModel {
       return false
     }
 
-    return existingUser.rows[0]
+    const user = existingUser.rows[0]
+
+    const queryRoles = {
+      text: `SELECT r.id, r.name
+                        FROM users_roles as ur
+                        JOIN roles as r ON ur.roleId = r.id
+                        WHERE ur.userId = $1`,
+      values: [user.id]
+    }
+
+    let roles
+    try {
+      const { rows } = await pool.query(queryRoles)
+      roles = rows
+    } catch (error) {
+      console.error('Error getting user roles')
+      throw new Error('Database query failed at getting user roles')
+    }
+
+    const queryPermissions = {
+      text: `SELECT DISTINCT p.name
+                        FROM users_roles ur
+                        JOIN roles_permissions rp ON ur.roleid = rp.roleid
+                        JOIN permissions p ON rp.permissionid = p.id
+                        WHERE ur.userid = $1`,
+      values: [user.id]
+    }
+
+    let permissions
+    try {
+      const { rows } = await pool.query(queryPermissions)
+      permissions = rows.map(row => row.name) // Extract just the names into an array
+    } catch (error) {
+      console.error('Error getting user permissions')
+      throw new Error('Database query failed at getting user permissions')
+    }
+
+    const userWithRole = { ...user, roles, permissions }
+
+    return userWithRole
   }
 
-  static async getById (id) {
+  static async getById({ id }) {
     // 1. Validate if the user already exists
     const query = {
       text: 'SELECT id, firstName, lastName, username, email, birthdate, phoneNumber, cellphoneNumber FROM users WHERE id = $1',
@@ -43,14 +84,19 @@ export class UserModel {
       console.error('Error checking user existence')
       throw new Error('Database query failed at checking user existence')
     }
-    if (user.length <= 0) {
+
+    if (user === undefined || user.length === 0) {
       return false
     }
 
     return user
   }
 
-  static async comparePassword ({ id, password }) {
+  static async comparePassword({ id, password }) {
+    if (id === null || password === null) {
+      return false
+    }
+
     const query = {
       text: 'SELECT * FROM users WHERE id = $1',
       values: [id]
@@ -77,7 +123,7 @@ export class UserModel {
     return true
   }
 
-  static async getAll ({ name, lastname, email, role }) {
+  static async getAll({ name, lastname, email, role }) {
     const conditions = []
     const values = []
     let idx = 1
@@ -148,7 +194,7 @@ export class UserModel {
     return users
   }
 
-  static async create ({
+  static async create({
     firstName,
     lastName,
     username,
@@ -160,8 +206,8 @@ export class UserModel {
   }) {
     // 1. Validate if the user already exists
     const checkUserQuery = {
-      text: 'SELECT * FROM users WHERE username = $1 OR email = $2',
-      values: [username, email]
+      text: 'SELECT * FROM users WHERE username = $1',
+      values: [username]
     }
     let existingUser
     try {
@@ -216,7 +262,7 @@ export class UserModel {
     return user
   }
 
-  static async update ({ id, input }) {
+  static async update({ id, input }) {
     const allowedFields = [
       'firstName',
       'lastName',
@@ -262,7 +308,7 @@ export class UserModel {
     return user
   }
 
-  static async softDeleteUser (id) {
+  static async softDeleteUser(id) {
     const query = {
       text: 'UPDATE users SET is_active = false WHERE id = $1 RETURNING *',
       values: [id]
@@ -279,7 +325,7 @@ export class UserModel {
     return true
   }
 
-  static async saveResetToken ({ id, hashedToken, tokenExpiration }) {
+  static async saveResetToken({ id, hashedToken, tokenExpiration }) {
     const query = {
       text: `
       UPDATE users 
@@ -298,7 +344,7 @@ export class UserModel {
     }
   }
 
-  static async updatePassword ({ hashedToken, password }) {
+  static async updatePassword({ hashedToken, password }) {
     const query = {
       text: `
       SELECT * FROM users 
@@ -322,10 +368,14 @@ export class UserModel {
 
     const hashedPW = await bcrypt.hashSync(password, Number(SALT_ROUNDS))
 
+    const isTest = process.env.NODE_ENV === 'test';
+
+    const nullifyTokenSQL = isTest ? "" : ", reset_password_token = NULL, reset_password_token_expiration = NULL";
+
     const updateQuery = {
       text: `
       UPDATE users 
-      SET password = $1, reset_password_token = NULL, reset_password_token_expiration = NULL 
+      SET password = $1${nullifyTokenSQL} 
       WHERE id = $2
     `,
       values: [hashedPW, user.id]
